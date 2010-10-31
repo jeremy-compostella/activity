@@ -22,33 +22,34 @@
 
 ;;; Commentary:
 ;; 
-;;
-;;
 ;;; Code:
 
 (defgroup activity nil
   "Activity management group"
-  :group 'comm)
+  :group 'convenience)
 
 (defcustom available-activities '(("default" 110 nil))
   "Available activities."
   :group 'activity)
 
-(defvar activity-stack '(("default" 110 nil))
+(defvar activity-stack (cons (car available-activities) nil)
   "Current stacked activitities.")
+
+(defvar activity-current-name
+  (concat "(" (car (first activity-stack)) ") ")
+  "Current activity name, useful for activity-mode-line")
 
 (defun activity-push (&optional name)
   "Push[, start] and display \"name\" activity."
   (when (not name)
     (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
   (let ((new-activity (search-activity name)))
-    (if (not (eq nil new-activity))
-	(progn
-	  (activity-save (first activity-stack))
-	  (activity-restore new-activity)
-	  (delq new-activity activity-stack)
-	  (push new-activity activity-stack))
-      (message (concat name " activity not found.")))))
+    (when (not (eq nil new-activity))
+      (activity-save (first activity-stack))
+      (activity-restore new-activity)
+      (delq new-activity activity-stack)
+      (push new-activity activity-stack)
+      (setq activity-current-name (concat "(" (car (first activity-stack)) ") ")))))
 
 (defun activity-pop ()
   "Pop the current activity."
@@ -56,7 +57,8 @@
   (if (> (list-length activity-stack) 1)
       (progn
 	(activity-save (pop activity-stack))
-	(activity-restore (first activity-stack)))
+	(activity-restore (first activity-stack))
+	(setq activity-current-name (concat "(" (car (first activity-stack)) ") ")))
     (message "No more activity.")))
 
 (defun toggle-activity (&optional name)
@@ -68,18 +70,19 @@
       (activity-pop)
     (activity-push name)))
 
+(defun toggle-activity-mode-line ()
+  "Toggle current activity in mode line"
+  (interactive)
+  (let ((frame-id-pos (memq 'mode-line-frame-identification mode-line-format)))
+    (if (memq 'activity-current-name mode-line-format)
+	(setcdr frame-id-pos (cddr frame-id-pos))
+      (setcdr frame-id-pos (cons 'activity-current-name (cdr frame-id-pos))))))
+
 (defun activity-reset (&optional name)
   "Reset \"name\" activity, it will be restarted on next push."
   (when (not name)
     (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
   (set-register (nth 1 (search-activity name)) nil))
-
-(defun activity-show-stack ()
-  (interactive)
-  (let ((msg ""))
-    (dolist (activity activity-stack)
-      (setq msg (concat msg (car activity) " ")))
-    (message msg)))
 
 (defun search-activity (name)
   (let ((found-activity))
