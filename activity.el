@@ -95,6 +95,17 @@
 (defun activity-save (activity)
   (puthash (car activity) (current-window-configuration) activities-wconf))
 
+(defun activity-set-current-as (&optional name)
+  "Save current window configuration as NAME activity"
+  (interactive)
+  (when (not name)
+    (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
+  (let ((activity (search-activity name)))
+    (when activity
+      (delq activity activity-stack)
+      (push activity activity-stack)
+      (setq activity-current-name (concat "(" (car (first activity-stack)) ") ")))))
+
 (defun activity-restore (activity)
   (let ((wconf (gethash (car activity) activities-wconf)))
     (if (window-configuration-p wconf)
