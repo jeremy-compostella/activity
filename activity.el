@@ -28,9 +28,11 @@
   "Activity management group"
   :group 'convenience)
 
-(defcustom available-activities '(("default" 110 nil))
+(defcustom available-activities '(("default" nil))
   "Available activities."
   :group 'activity)
+
+(defvar activities-wconf  (make-hash-table :test 'equal))
 
 (defvar activity-stack (cons (car available-activities) nil)
   "Current stacked activitities.")
@@ -40,7 +42,7 @@
   "Current activity name, useful for activity-mode-line")
 
 (defun activity-push (&optional name)
-  "Push[, start] and display \"name\" activity."
+  "Push[, start] and display NAME activity."
   (when (not name)
     (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
   (let ((new-activity (search-activity name)))
@@ -62,7 +64,7 @@
     (message "No more activity.")))
 
 (defun toggle-activity (&optional name)
-  "Push \"name\" activity if not displayed, pop otherwise."
+  "Push NAME activity if not displayed, pop otherwise."
   (interactive)
   (when (not name)
     (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
@@ -78,12 +80,6 @@
 	(setcdr frame-id-pos (cddr frame-id-pos))
       (setcdr frame-id-pos (cons 'activity-current-name (cdr frame-id-pos))))))
 
-(defun activity-reset (&optional name)
-  "Reset \"name\" activity, it will be restarted on next push."
-  (when (not name)
-    (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
-  (set-register (nth 1 (search-activity name)) nil))
-
 (defun search-activity (name)
   (let ((found-activity))
     (dolist (activity available-activities)
@@ -91,14 +87,20 @@
 	(setq found-activity activity)))
     found-activity))
 
+(defun activity-reset (&optional name)
+  "Reset NAME activity, it will be restarted on next push."
+  (when (not name)
+    (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
+  (remhash name activities-wconf))
+
 (defun activity-save (activity)
-  (window-configuration-to-register (nth 1 activity)))
+  (puthash (car activity) (current-window-configuration) activities-wconf))
 
 (defun activity-restore (activity)
-  (let ((val (get-register (nth 1 activity))))
-    (if (and (consp val) (window-configuration-p (car val)))
-	(jump-to-register (nth 1 activity))
-      (let ((func (nth 2 activity)))
+  (let ((wconf (gethash (car activity) activities-wconf)))
+    (if (window-configuration-p wconf)
+	(set-window-configuration wconf)
+      (let ((func (nth 1 activity)))
 	(when (not (eq nil func))
 	  (funcall func))))))
 
