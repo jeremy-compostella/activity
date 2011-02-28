@@ -1,6 +1,6 @@
 ;;; activity.el --- Activity management.
 
-;; Copyright (C) 2010 Jérémy Compostella
+;; Copyright (C) 2010-2011 Jérémy Compostella
 
 ;; Author: Jérémy Compostella <jeremy.compostella@gmail.com>
 ;; Keywords: emacs activity window configuration
@@ -42,10 +42,10 @@
 
 (defun activity-push (&optional name)
   "Push[, start] and display NAME activity."
-  (when (not name)
+  (unless name
     (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
   (let ((new-activity (search-activity name)))
-    (when (not (eq nil new-activity))
+    (when new-activity
       (activity-save (first activity-stack))
       (activity-restore new-activity)
       (delq new-activity activity-stack)
@@ -65,7 +65,7 @@
 (defun toggle-activity (&optional name)
   "Push NAME activity if not displayed, pop otherwise."
   (interactive)
-  (when (not name)
+  (unless name
     (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
   (if (string= name (car (first activity-stack)))
       (activity-pop)
@@ -80,15 +80,11 @@
       (setcdr frame-id-pos (cons 'activity-current-name (cdr frame-id-pos))))))
 
 (defun search-activity (name)
-  (let ((found-activity))
-    (dolist (activity available-activities)
-      (when (string= (car activity) name)
-	(setq found-activity activity)))
-    found-activity))
+  (find name available-activities :test '(lambda (x y) (string= x (car y)))))
 
 (defun activity-reset (&optional name)
   "Reset NAME activity, it will be restarted on next push."
-  (when (not name)
+  (unless name
     (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
   (remhash name activities-wconf))
 
@@ -98,7 +94,7 @@
 (defun activity-set-current-as (&optional name)
   "Save current window configuration as NAME activity"
   (interactive)
-  (when (not name)
+  (unless name
     (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
   (let ((activity (search-activity name)))
     (when activity
@@ -111,7 +107,6 @@
     (if (window-configuration-p wconf)
 	(set-window-configuration wconf)
       (let ((func (nth 1 activity)))
-	(when (not (eq nil func))
-	  (funcall func))))))
+	(when func (funcall func))))))
 
 (provide 'activity)
