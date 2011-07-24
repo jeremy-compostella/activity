@@ -23,15 +23,25 @@
 ;;; Documentation: http://www.jerryland.fr/software/activity.html
 ;;; Code:
 
+(require 'cl)
+(require 'iswitchb)
+
 (defgroup activity nil
   "Activity management group"
   :group 'convenience)
 
-(defcustom available-activities '(("default" nil))
+(defstruct activity
+  (name :read-only t)
+  (open-hook nil :read-only t)		; Called on first open
+  (enable-hook nil :read-only t)	; Called when switching to this activity
+  (disable-hook nil :read-only t)	; Called when exiting this activity
+  (buffer-filter-hook nil :read-only t))
+
+(defcustom available-activities (list (make-activity :name "Default"))
   "Available activities."
   :group 'activity)
 
-(defvar activities-wconf  (make-hash-table :test 'equal))
+(defvar activities-wconf (make-hash-table :test 'equal))
 
 (defvar activity-stack (cons (car available-activities) nil)
   "Current stacked activitities.")
@@ -43,14 +53,14 @@
 (defun activity-push (&optional name)
   "Push[, start] and display NAME activity."
   (unless name
-    (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
+    (setq name (completing-read "Activity name: " (mapcar 'activity-name available-activities))))
   (let ((new-activity (search-activity name)))
     (when new-activity
       (activity-save (first activity-stack))
       (activity-restore new-activity)
       (delq new-activity activity-stack)
       (push new-activity activity-stack)
-      (setq activity-current-name (concat "(" (car (first activity-stack)) ") ")))))
+      (setq activity-current-name (concat "(" (activity-name (first activity-stack)) ") ")))))
 
 (defun activity-pop ()
   "Pop the current activity."
@@ -59,7 +69,7 @@
       (progn
 	(activity-save (pop activity-stack))
 	(activity-restore (first activity-stack))
-	(setq activity-current-name (concat "(" (car (first activity-stack)) ") ")))
+	(setq activity-current-name (concat "(" (activity-name (first activity-stack)) ") ")))
     (message "No more activity.")))
 
 (defun toggle-activity (&optional name)
@@ -67,7 +77,7 @@
   (interactive)
   (unless name
     (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
-  (if (string= name (car (first activity-stack)))
+  (if (string= name (activity-name (first activity-stack)))
       (activity-pop)
     (activity-push name)))
 
@@ -80,7 +90,7 @@
       (setcdr frame-id-pos (cons 'activity-current-name (cdr frame-id-pos))))))
 
 (defun search-activity (name)
-  (find name available-activities :test '(lambda (x y) (string= x (car y)))))
+  (find name available-activities :test '(lambda (x y) (string= x (activity-name y)))))
 
 (defun activity-reset (&optional name)
   "Reset NAME activity, it will be restarted on next push."
@@ -89,7 +99,7 @@
   (remhash name activities-wconf))
 
 (defun activity-save (activity)
-  (puthash (car activity) (current-window-configuration) activities-wconf))
+  (puthash (activity-name activity) (current-window-configuration) activities-wconf))
 
 (defun activity-set-current-as (&optional name)
   "Save current window configuration as NAME activity"
@@ -100,13 +110,13 @@
     (when activity
       (delq activity activity-stack)
       (push activity activity-stack)
-      (setq activity-current-name (concat "(" (car (first activity-stack)) ") ")))))
+      (setq activity-current-name (concat "(" (activity-name (first activity-stack)) ") ")))))
 
 (defun activity-restore (activity)
-  (let ((wconf (gethash (car activity) activities-wconf)))
+  (let ((wconf (gethash (activity-name activity) activities-wconf)))
     (if (window-configuration-p wconf)
 	(set-window-configuration wconf)
-      (let ((func (nth 1 activity)))
+      (let ((func (activity-open-hook activity)))
 	(when func (funcall func))))))
 
 (provide 'activity)
