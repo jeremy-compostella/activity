@@ -32,10 +32,10 @@
 
 (defstruct activity
   (name :read-only t)
-  (open-hook nil :read-only t)		; Called on first open
+  (open-hook nil :read-only t)		; Called on first activity open
   (enable-hook nil :read-only t)	; Called when switching to this activity
   (disable-hook nil :read-only t)	; Called when exiting this activity
-  (buffer-filter-hook nil :read-only t))
+  (buffer-filter-p (lambda (buf) (interactive) t) :read-only t))  	; Predicate for buffer filtering
 
 (defcustom available-activities (list (make-activity :name "Default"))
   "Available activities."
@@ -47,7 +47,7 @@
   "Current stacked activitities.")
 
 (defvar activity-current-name
-  (concat "(" (car (first activity-stack)) ") ")
+  (concat "(" (activity-name (first activity-stack)) ") ")
   "Current activity name, useful for activity-mode-line")
 
 (defun activity-push (&optional name)
@@ -76,7 +76,7 @@
   "Push NAME activity if not displayed, pop otherwise."
   (interactive)
   (unless name
-    (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
+    (setq name (completing-read "Activity name: " (mapcar 'activity-name available-activities))))
   (if (string= name (activity-name (first activity-stack)))
       (activity-pop)
     (activity-push name)))
@@ -89,6 +89,25 @@
 	(setcdr frame-id-pos (cddr frame-id-pos))
       (setcdr frame-id-pos (cons 'activity-current-name (cdr frame-id-pos))))))
 
+(defun activity-set-current-as (&optional name)
+  "Save current window configuration as NAME activity"
+  (interactive)
+  (unless name
+    (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
+  (let ((activity (search-activity name)))
+    (when activity
+      (delq activity activity-stack)
+      (push activity activity-stack)
+      (activity-call-hook activity 'activity-enable-hook)
+      (setq activity-current-name (concat "(" (activity-name (first activity-stack)) ") ")))))
+
+(defun activity-switchb ()
+  (interactive)
+  (let ((buf-p (activity-buffer-filter-p (first activity-stack))))
+    (let ((iswitchb-make-buflist-hook
+            (lambda () (setq iswitchb-temp-buflist (delete-if-not buf-p iswitchb-temp-buflist)))))
+	(switch-to-buffer (iswitchb-read-buffer "activity-switchb: ")))))
+
 (defun search-activity (name)
   (find name available-activities :test '(lambda (x y) (string= x (activity-name y)))))
 
@@ -99,24 +118,19 @@
   (remhash name activities-wconf))
 
 (defun activity-save (activity)
+  (activity-call-hook activity 'activity-disable-hook)
   (puthash (activity-name activity) (current-window-configuration) activities-wconf))
-
-(defun activity-set-current-as (&optional name)
-  "Save current window configuration as NAME activity"
-  (interactive)
-  (unless name
-    (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
-  (let ((activity (search-activity name)))
-    (when activity
-      (delq activity activity-stack)
-      (push activity activity-stack)
-      (setq activity-current-name (concat "(" (activity-name (first activity-stack)) ") ")))))
 
 (defun activity-restore (activity)
   (let ((wconf (gethash (activity-name activity) activities-wconf)))
     (if (window-configuration-p wconf)
-	(set-window-configuration wconf)
-      (let ((func (activity-open-hook activity)))
-	(when func (funcall func))))))
+	(progn (set-window-configuration wconf)
+	       (activity-call-hook activity 'activity-enable-hook))
+      (progn (activity-call-hook activity 'activity-open-hook)
+	     (activity-call-hook activity 'activity-enable-hook)))))
+
+(defun activity-call-hook (activity hook-accessor)
+  (let ((func (funcall hook-accessor activity)))
+    (when func (funcall func))))
 
 (provide 'activity)
