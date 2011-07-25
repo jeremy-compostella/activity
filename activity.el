@@ -33,9 +33,11 @@
 (defstruct activity
   (name :read-only t)
   (open-hook nil :read-only t)		; Called on first activity open
-  (enable-hook nil :read-only t)	; Called when switching to this activity
+  (terminate-hook nil :read-only t) 	; Called when closing the activity
+  (enable-hook nil :read-only t)	; Called when switching to this activity (even at open)
   (disable-hook nil :read-only t)	; Called when exiting this activity
-  (buffer-filter-p (lambda (buf) (interactive) t) :read-only t))  	; Predicate for buffer filtering
+  (buffer-filter-p (lambda (buf) (interactive) t) :read-only t) ; Predicate for buffer filtering
+  (buffer-list (list "")))  ; Complementary buffer list for buffer filtering
 
 (defcustom available-activities (list (make-activity :name "Default"))
   "Available activities."
@@ -101,11 +103,18 @@
       (activity-call-hook activity 'activity-enable-hook)
       (setq activity-current-name (concat "(" (activity-name (first activity-stack)) ") ")))))
 
+(defun activity-buffer-p (buf-name)
+  (let ((activity (first activity-stack)))
+    (or (funcall (activity-buffer-filter-p (first activity-stack)) buf-name)
+	(find buf-name (activity-buffer-list (first activity-stack)) :test 'string=))))
+
 (defun activity-switchb ()
+  "Switch to another buffer. Buffer list filtered by activity."
   (interactive)
   (let ((buf-p (activity-buffer-filter-p (first activity-stack))))
     (let ((iswitchb-make-buflist-hook
-            (lambda () (setq iswitchb-temp-buflist (delete-if-not buf-p iswitchb-temp-buflist)))))
+            (lambda () (setq iswitchb-temp-buflist
+			     (delete-if-not 'activity-buffer-p iswitchb-temp-buflist)))))
 	(switch-to-buffer (iswitchb-read-buffer "activity-switchb: ")))))
 
 (defun search-activity (name)
@@ -132,5 +141,20 @@
 (defun activity-call-hook (activity hook-accessor)
   (let ((func (funcall hook-accessor activity)))
     (when func (funcall func))))
+
+(defun activity-add-buffer ()
+  (interactive)
+  (let ((activity (first activity-stack)))
+    (when (and (not (funcall (activity-buffer-filter-p activity) (current-buffer)))
+	       (not (find (buffer-name (current-buffer)) (activity-buffer-list activity) :test 'string=)))
+      (push (buffer-name (current-buffer)) (activity-buffer-list activity)))))
+
+(defun activity-remove-buffer ()
+  (interactive)
+  (delete (buffer-name (current-buffer)) (activity-buffer-list (first activity-stack))))
+
+(add-to-list 'find-file-hook 'activity-add-buffer)
+(add-to-list 'kill-buffer-hook 'activity-remove-buffer)
+(add-to-list 'window-configuration-change-hook 'activity-add-buffer)
 
 (provide 'activity)
