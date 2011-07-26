@@ -122,12 +122,6 @@
 (defun search-activity (name)
   (find name available-activities :test '(lambda (x y) (string= x (activity-name y)))))
 
-(defun activity-reset (&optional name)
-  "Reset NAME activity, it will be restarted on next push."
-  (unless name
-    (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
-  (setf (activity-wconf (search-activity name)) nil))
-
 (defun activity-save (activity)
   (activity-call-hook activity 'activity-disable-hook)
   (setf (activity-wconf activity) (current-window-configuration)))
