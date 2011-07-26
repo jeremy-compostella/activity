@@ -153,7 +153,6 @@
   (interactive)
   (delete (buffer-name (current-buffer)) (activity-buffer-list (current-activity))))
 
-(add-to-list 'find-file-hook 'activity-add-buffer)
 (add-to-list 'kill-buffer-hook 'activity-remove-buffer)
 (add-to-list 'window-configuration-change-hook 'activity-add-buffer)
 
