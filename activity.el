@@ -146,8 +146,11 @@
 
 (defun activity-add-buffer ()
   (interactive)
-  (unless (activity-buffer-p (buffer-name (current-buffer)))
-    (push (buffer-name (current-buffer)) (activity-buffer-list (current-activity)))))
+  (flet ((add-buffer (window)
+		     (let ((buffer (window-buffer window)))     
+		       (unless (activity-buffer-p (buffer-name buffer))
+			 (push (buffer-name buffer) (activity-buffer-list (current-activity)))))))
+    (walk-windows 'add-buffer)))
 
 (defun activity-remove-buffer ()
   (interactive)
