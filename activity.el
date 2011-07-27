@@ -124,6 +124,16 @@
 			     (delete-if-not 'activity-buffer-p iswitchb-temp-buflist)))))
 	(switch-to-buffer (iswitchb-read-buffer "activity-switchb: ")))))
 
+(defun new-activity (name key)
+  (interactive (list (read-string "Activity name: ")
+		     (read-key-sequence "Key sequence: ")))
+  (if (search-activity name)
+    (error "\"%s\" activity already exists." name)
+    (progn
+      (add-to-list 'available-activities (make-activity :name name))
+      (global-set-key key (lambda () (interactive) (toggle-activity name)))
+      (toggle-activity name))))
+
 (defun search-activity (name)
   (find name available-activities :test '(lambda (x y) (string= x (activity-name y)))))
 
