@@ -129,7 +129,8 @@
 		     (read-key-sequence "Key sequence: ")))
   (if (search-activity name)
     (error "\"%s\" activity already exists." name)
-    (progn
+    (when (or (not (global-key-binding key))
+	      (y-or-n-p "This key sequence is already in use. Overwrite it ? "))
       (add-to-list 'available-activities (make-activity :name name))
       (global-set-key key (lambda () (interactive) (toggle-activity name)))
       (toggle-activity name))))
