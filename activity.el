@@ -45,6 +45,10 @@
   "Available activities."
   :group 'activity)
 
+(defcustom toggle-activity-hooks nil
+  "Hooks run when swithing to another activity."
+  :group 'activity)
+
 (defvar activity-stack (cons (car available-activities) nil)
   "Current stacked activitities.")
 
@@ -85,7 +89,8 @@
     (setq name (completing-read "Activity name: " (mapcar 'activity-name available-activities))))
   (if (string= name (activity-name (current-activity)))
       (activity-pop)
-    (activity-push name)))
+    (activity-push name))
+  (run-hooks 'toggle-activity-hooks))
 
 (defun toggle-activity-mode-line ()
   "Toggle current activity in mode line"
