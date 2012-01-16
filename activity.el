@@ -104,7 +104,7 @@
   "Save current window configuration as NAME activity"
   (interactive)
   (unless name
-    (setq name (completing-read "Activity name: " (mapcar 'car available-activities))))
+    (setq name (completing-read "Activity name: " (mapcar 'activity-name available-activities))))
   (let ((activity (search-activity name)))
     (when activity
       (delq activity activity-stack)
