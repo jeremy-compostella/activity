@@ -117,17 +117,27 @@
   
 (defun activity-buffer-p (buf-name)
   (let ((activity (current-activity)))
-    (or (funcall (activity-buffer-filter-p activity) buf-name)
+    (or (not (activity-buffer-filter-p activity))
+	(funcall (activity-buffer-filter-p activity) buf-name)
 	(find buf-name (activity-buffer-list activity) :test 'string=))))
 
-(defun activity-switchb ()
+(defun activity-iswitch-to-buffer ()
+  (let ((iswitchb-make-buflist-hook
+	 (lambda () (setq iswitchb-temp-buflist
+			  (delete-if-not 'activity-buffer-p iswitchb-temp-buflist)))))
+    (switch-to-buffer (iswitchb-read-buffer "activity-switchb: "))))
+
+(defun activity-ido-switch-to-buffer ()
+  (let ((ido-ignore-buffers (delete-if 'activity-buffer-p (mapcar 'buffer-name (buffer-list)))))
+    (ido-switch-buffer)))
+
+(defun activity-switch-to-buffer ()
   "Switch to another buffer. Buffer list filtered by activity."
   (interactive)
-  (let ((buf-p (activity-buffer-filter-p (current-activity))))
-    (let ((iswitchb-make-buflist-hook
-            (lambda () (setq iswitchb-temp-buflist
-			     (delete-if-not 'activity-buffer-p iswitchb-temp-buflist)))))
-	(switch-to-buffer (iswitchb-read-buffer "activity-switchb: ")))))
+  (cond (iswitchb-mode (activity-iswitch-to-buffer ))
+	((or (eq ido-mode 'buffer) (eq ido-mode 'both)) (activity-ido-switch-to-buffer ))
+	(t (completing-read (format "Switch to buffer (default %s): " (other-buffer (current-buffer)))
+			    (delete-if-not 'activity-buffer-p (mapcar 'buffer-name (buffer-list)))))))
 
 (defun new-activity (name key)
   (interactive (list (read-string "Activity name: ")
