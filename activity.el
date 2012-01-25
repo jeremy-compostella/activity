@@ -1,30 +1,72 @@
-;;; activity.el --- Activity management.
+;;; activity.el --- Activity management (named window configuration).
 
-;; Copyright (C) 2010-2011 Jérémy Compostella
+;; Copyright (C) 2010-2012 Jérémy Compostella
 
 ;; Author: Jérémy Compostella <jeremy.compostella@gmail.com>
-;; Keywords: emacs activity window configuration
+;; Version: 0.1
+;; Keywords: activity window configuration
 
-;; This file is NOT part of GNU Emacs.
-
-;; GNU Emacs is free software: you can redistribute it and/or modify
+;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
 ;; (at your option) any later version.
 
-;; GNU Emacs is distributed in the hope that it will be useful,
+;; This program is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-;;; Documentation: http://www.jerryland.fr/software/activity.html
+;;; Commentary:
+
+;; This package provides an `activity' management. An activity is
+;; mainly compound with a name (like "Mail" activity for exemple) and
+;; a window configuration. When an activity is opened for the first
+;; time its `open-hook' is called. When switching from an activity to
+;; another the `enable-hook' and `disable-hook' are respectively
+;; called on activity or deactivating the activity.
+
+;; The runned activities are arranged in a stack so you can pop the
+;; current activity (see `activity-pop') to go to previous one or push
+;; a new one. If you push an activity (see `activity-push') which was
+;; in the activities stack it goes to the top of the activities
+;; stack. The common way to enable an activity consist in call the
+;; `toggle-activity' with the name of the activity as argument.
+
+;; The activity management provides a way to work on multiple project
+;; or task easily by offering a simple way to manage the buffer list
+;; when switching to another buffer. When the `buffer-filter-p' is not
+;; provided for an activity, all the available buffers are assumed to
+;; be associated to this activity. When defined, only the buffer which
+;; which name is accepeted by the `buffer-filter-p' hook is accepted
+;; or the buffer has been previously visited is provided as a
+;; potential buffer switch.
+
+;; For exemple I define my linux kernel development activity as
+;; follow:
+
+;; (add-to-list 'available-activities
+;; 	     (make-activity :name "LinuxDev"
+;; 			    :open-hook (lambda ()
+;; 					 (delete-other-windows)
+;; 					 (find-file linux-kernel-path))
+;; 			    :buffer-filter-p (lambda (buf-name)
+;; 					       (with-current-buffer buf-name
+;; 						 (string-prefix-p linux-kernel-path buffer-file-name)))
+;; 			    :enable-hook (lambda ()
+;; 					   (setq compile-command linux-kernel-compile-command))
+;; 			    :disable-hook (lambda ()
+;; 					    (setq compile-command nil))))
+
+;; When I call the `activity-switch-to-buffer' it will only propose me
+;; the file which are in the linux kernel path or that have been
+;; previoulsy visited while the "LinuxDev" activity was enabled.
+
 ;;; Code:
 
 (require 'cl)
-(require 'iswitchb)
 
 (defgroup activity nil
   "Activity management group"
@@ -42,7 +84,8 @@
   (wconf nil))	      ; Activity saved window configuration
 
 (defcustom available-activities (list (make-activity :name "Default"))
-  "Available activities."
+  "Available activities list.
+Add your personal activities in this list. "
   :group 'activity)
 
 (defcustom toggle-activity-hooks nil
@@ -50,18 +93,23 @@
   :group 'activity)
 
 (defvar activity-stack (cons (car available-activities) nil)
-  "Current stacked activitities.")
+  "Currently stacked activitities.")
 
 (defun current-activity () (first activity-stack))
 
 (defcustom activity-mode-line-format "(%s) "
-  "Activity mode-line format")
+  "Activity mode-line format"
+  :group 'activity)
   
 (defvar activity-current-name (format activity-mode-line-format (activity-name (current-activity)))
-  "Current activity name, useful for activity-mode-line")
+  "Current activity name, used by `activity-update-mode-line'.")
 
 (defun activity-push (&optional name)
-  "Push[, start] and display NAME activity."
+  "Push[, start] and enable NAME activity.
+If NAME activity is the current one, it calls `activity-pop'. If
+NAME activity is in the `activity-stack', it will enable it and
+place it on top of the `activity-stack'.
+Otherwise, the NAME activity is started."
   (unless name
     (setq name (completing-read "Activity name: " (mapcar 'activity-name available-activities))))
   (let ((new-activity (search-activity name)))
@@ -177,7 +225,9 @@
   (interactive)
   (delq (buffer-name (current-buffer)) (activity-buffer-list (current-activity))))
 
+;;;###autoload
 (add-to-list 'kill-buffer-hook 'activity-remove-buffer)
 (add-to-list 'window-configuration-change-hook 'activity-add-buffer)
 
 (provide 'activity)
+;;; activity.el ends here
