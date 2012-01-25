@@ -75,7 +75,6 @@
 (defstruct activity
   name
   (open-hook 'ignore)		    ; Called on first activity open
-  (terminate-hook 'ignore)	    ; Called when closing the activity
   (enable-hook 'ignore)	; Called when switching to this activity (even at open)
   (disable-hook 'ignore)	   ; Called when exiting this activity
   (buffer-filter-p 'ignore)	   ; Predicate for buffer filtering
