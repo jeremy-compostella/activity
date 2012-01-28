@@ -131,9 +131,7 @@ Otherwise, the NAME activity is started."
 
 (defun toggle-activity (&optional name)
   "Push NAME activity if not displayed, pop otherwise."
-  (interactive)
-  (unless name
-    (setq name (completing-read "Activity name: " (mapcar 'activity-name available-activities))))
+  (interactive (list (completing-read "Activity name: " (mapcar 'activity-name available-activities))))
   (if (string= name (activity-name (current-activity)))
       (activity-pop)
     (activity-push name))
@@ -149,9 +147,7 @@ Otherwise, the NAME activity is started."
 
 (defun activity-set-current-as (&optional name)
   "Save current window configuration as NAME activity"
-  (interactive)
-  (unless name
-    (setq name (completing-read "Activity name: " (mapcar 'activity-name available-activities))))
+  (interactive (list (completing-read "Activity name: " (mapcar 'activity-name available-activities))))
   (let ((activity (search-activity name)))
     (when activity
       (delq activity activity-stack)
