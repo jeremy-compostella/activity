@@ -171,7 +171,7 @@ Otherwise, the NAME activity is started."
     (switch-to-buffer (iswitchb-read-buffer "activity-switchb: "))))
 
 (defun activity-ido-switch-to-buffer ()
-  (let ((ido-ignore-buffers (delete-if 'activity-buffer-p (mapcar 'buffer-name (buffer-list)))))
+  (let ((ido-ignore-buffers (mapcar 'regexp-quote (delete-if 'activity-buffer-p (mapcar 'buffer-name (buffer-list))))))
     (ido-switch-buffer)))
 
 (defun activity-switch-to-buffer ()
