@@ -218,7 +218,7 @@ Otherwise, the NAME activity is started."
 
 (defun activity-remove-buffer ()
   (interactive)
-  (delq (buffer-name (current-buffer)) (activity-buffer-list (current-activity))))
+  (setf (activity-buffer-list (current-activity)) (delq (buffer-name (current-buffer)) (activity-buffer-list (current-activity)))))
 
 ;;;###autoload
 (add-to-list 'kill-buffer-hook 'activity-remove-buffer)
