@@ -171,16 +171,22 @@ Otherwise, the NAME activity is started."
     (switch-to-buffer (iswitchb-read-buffer "activity-switchb: "))))
 
 (defun activity-ido-switch-to-buffer ()
+  (progn
+    (message "actitity buffer-list=%s" (activity-buffer-list (current-activity)))
   (let ((ido-ignore-buffers (mapcar 'regexp-quote (delete-if 'activity-buffer-p (mapcar 'buffer-name (buffer-list))))))
-    (ido-switch-buffer)))
+    (progn
+      (message "ido-ignore-buffers=%s" ido-ignore-buffers)
+    (ido-switch-buffer)))))
 
 (defun activity-switch-to-buffer ()
   "Switch to another buffer. Buffer list filtered by activity."
   (interactive)
+  (progn
+  (message "actitity buffer-list=%s" (activity-buffer-list (current-activity)))
   (cond (iswitchb-mode (activity-iswitch-to-buffer ))
 	((or (eq ido-mode 'buffer) (eq ido-mode 'both)) (activity-ido-switch-to-buffer ))
 	(t (completing-read (format "Switch to buffer (default %s): " (other-buffer (current-buffer)))
-			    (delete-if-not 'activity-buffer-p (mapcar 'buffer-name (buffer-list)))))))
+			    (delete-if-not 'activity-buffer-p (mapcar 'buffer-name (buffer-list))))))))
 
 (defun new-activity (name key)
   (interactive (list (read-string "Activity name: ")
@@ -220,6 +226,7 @@ Otherwise, the NAME activity is started."
   (interactive)
   (setf (activity-buffer-list (current-activity)) (delq (buffer-name (current-buffer)) (activity-buffer-list (current-activity)))))
 
+
 (defun activity-flush-buffer-list ()
   (interactive)
   (setf (activity-buffer-list (current-activity)) '()))
@@ -227,6 +234,10 @@ Otherwise, the NAME activity is started."
 ;;;###autoload
 (add-to-list 'kill-buffer-hook 'activity-remove-buffer)
 (add-to-list 'window-configuration-change-hook 'activity-add-buffer)
+
+(defadvice activity-window-prev-buffers (after window-prev-buffers)
+  (message "Advice: %s" ad-return-value))
+(ad-activate 'activity-window-prev-buffers)
 
 (provide 'activity)
 ;;; activity.el ends here
