@@ -220,6 +220,10 @@ Otherwise, the NAME activity is started."
   (interactive)
   (setf (activity-buffer-list (current-activity)) (delq (buffer-name (current-buffer)) (activity-buffer-list (current-activity)))))
 
+(defun activity-flush-buffer-list ()
+  (interactive)
+  (setf (activity-buffer-list (current-activity)) '()))
+
 ;;;###autoload
 (add-to-list 'kill-buffer-hook 'activity-remove-buffer)
 (add-to-list 'window-configuration-change-hook 'activity-add-buffer)
