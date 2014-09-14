@@ -172,9 +172,7 @@ Otherwise, the NAME activity is started."
 
 (defun activity-ido-switch-to-buffer ()
   (let ((ido-ignore-buffers (mapcar 'regexp-quote (delete-if 'activity-buffer-p (mapcar 'buffer-name (buffer-list))))))
-    (progn
-      (message "ido-ignore-buffers=%s" ido-ignore-buffers)
-    (ido-switch-buffer))))
+    (ido-switch-buffer)))
 
 (defun activity-switch-to-buffer ()
   "Switch to another buffer. Buffer list filtered by activity."
